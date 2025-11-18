@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Surfer QTE Game</title>
+<style>
+    body {
+        margin: 0;
+        overflow: hidden;
+        background: #3ec0ff;
+        font-family: Arial, sans-serif;
+        user-select: none;
+    }
+
+    /* scrolling water */
+    #water {
+        position: absolute;
+        width: 200%;
+        height: 100%;
+        background: url('https://smcbgs.wordpress.com/wp-content/uploads/2020/04/omseqfs.png') repeat-x;
+        background-size: cover;
+        animation: scroll 8s linear infinite;
+        z-index: 1;
+    }
+
+    @keyframes scroll {
+        from { transform: translateX(0); }
+        to { transform: translateX(-50%); }
+    }
+
+    /* surfer */
+    #surfer {
+        position: absolute;
+        bottom: 40px;
+        left: 100px;
+        width: 120px;
+        height: 120px;
+        background: url('https://e7.pngegg.com/pngimages/745/644/png-clipart-surfer-dude-surfing-surfboard-surfing-silhouette-physical-fitness-sport-thumbnail.png') center/cover no-repeat;
+        z-index: 3;
+    }
+
+    /* QTE button */
+    #qte {
+        position: absolute;
+        padding: 18px 30px;
+        background: yellow;
+        border: 4px solid black;
+        border-radius: 12px;
+        font-size: 24px;
+        font-weight: bold;
+        cursor: pointer;
+        display: none;
+        z-index: 5;
+    }
+
+    /* overlay messages */
+    #message {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        color: white;
+        background: rgba(0,0,0,0.8);
+        top: 0;
+        left: 0;
+        display: none;
+        z-index: 10;
+        text-align: center;
+        font-size: 80px;
+        font-weight: bold;
+        padding-top: 200px;
+    }
+
+    #restartBtn {
+        display: block;
+        margin: 40px auto;
+        font-size: 32px;
+        padding: 14px 30px;
+        border: none;
+        border-radius: 14px;
+        cursor: pointer;
+    }
+</style>
+</head>
+
+<body>
+
+<div id="water"></div>
+<div id="surfer"></div>
+
+<button id="qte">CLICK!</button>
+
+<div id="message"></div>
+
+<script>
+let qtesCompleted = 0;
+let timer = null;
+
+// Start first QTE
+startQTE();
+
+function startQTE() {
+    if (qtesCompleted >= 10) {
+        winGame();
+        return;
+    }
+
+    const qte = document.getElementById("qte");
+
+    // Random position
+    let x = Math.random() * (window.innerWidth - 160);
+    let y = Math.random() * (window.innerHeight - 200);
+
+    qte.style.left = x + "px";
+    qte.style.top = y + "px";
+    qte.style.display = "block";
+
+    // Timer for failure
+    timer = setTimeout(() => {
+        failGame();
+    }, 4000); // 4 seconds max
+}
+
+document.getElementById("qte").onclick = () => {
+    clearTimeout(timer);
+    document.getElementById("qte").style.display = "none";
+    qtesCompleted++;
+    startQTE();
+};
+
+function failGame() {
+    endMessage("WIPEOUT");
+}
+
+function winGame() {
+    endMessage("SURF LEGEND");
+}
+
+function endMessage(text) {
+    const msg = document.getElementById("message");
+    msg.innerHTML = text + "<br><button id='restartBtn'>RESTART</button>";
+    msg.style.display = "block";
+
+    document.getElementById("qte").style.display = "none";
+
+    document.getElementById("restartBtn").onclick = () => {
+        location.reload();
+    };
+}
+</script>
+
+</body>
+</html>

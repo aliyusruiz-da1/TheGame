@@ -1,152 +1,307 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Surfer QTE Game</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Surfer QTE — Side Scroller (HTML + JS)</title>
 <style>
-    body {
-        margin: 0;
-        overflow: hidden;
-        background: #3ec0ff;
-        font-family: Arial, sans-serif;
-        user-select: none;
-    }
-
-    /* scrolling water */
-    #water {
-        position: absolute;
-        width: 200%;
-        height: 100%;
-        background: url('https://smcbgs.wordpress.com/wp-content/uploads/2020/04/omseqfs.png') repeat-x;
-        background-size: cover;
-        animation: scroll 8s linear infinite;
-        z-index: 1;
-    }
-
-    @keyframes scroll {
-        from { transform: translateX(0); }
-        to { transform: translateX(-50%); }
-    }
-
-    /* surfer */
-    #surfer {
-        position: absolute;
-        bottom: 40px;
-        left: 100px;
-        width: 120px;
-        height: 120px;
-        background: url('https://e7.pngegg.com/pngimages/745/644/png-clipart-surfer-dude-surfing-surfboard-surfing-silhouette-physical-fitness-sport-thumbnail.png') center/cover no-repeat;
-        z-index: 3;
-    }
-
-    /* QTE button */
-    #qte {
-        position: absolute;
-        padding: 18px 30px;
-        background: yellow;
-        border: 4px solid black;
-        border-radius: 12px;
-        font-size: 24px;
-        font-weight: bold;
-        cursor: pointer;
-        display: none;
-        z-index: 5;
-    }
-
-    /* overlay messages */
-    #message {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        color: white;
-        background: rgba(0,0,0,0.8);
-        top: 0;
-        left: 0;
-        display: none;
-        z-index: 10;
-        text-align: center;
-        font-size: 80px;
-        font-weight: bold;
-        padding-top: 200px;
-    }
-
-    #restartBtn {
-        display: block;
-        margin: 40px auto;
-        font-size: 32px;
-        padding: 14px 30px;
-        border: none;
-        border-radius: 14px;
-        cursor: pointer;
-    }
+  :root {
+    --bg: #69d0ff;
+    --ocean1: #0077cc;
+    --ocean2: #04659a;
+    --board: #f5c16c;
+    --accent: #ff5757;
+  }
+  html,body { height:100%; margin:0; font-family: Inter, system-ui, sans-serif; background:var(--bg); }
+  .game-wrap { position:relative; width:100%; height:100vh; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+  canvas { display:block; background: linear-gradient(#9ee6ff, #69d0ff 60%); width:100%; height:100%; }
+  /* QTE button */
+  .qte {
+    position:absolute;
+    min-width:110px;
+    height:48px;
+    border-radius:10px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:700;
+    cursor:pointer;
+    user-select:none;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+    transform: translate(-50%, -50%);
+    z-index:20;
+    background: linear-gradient(180deg, #ff6b6b, #ff3b3b);
+    color:white;
+    border: 2px solid rgba(255,255,255,0.15);
+    touch-action: manipulation;
+  }
+  .timer-ring {
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+    pointer-events:none;
+    z-index:19;
+    width:78px;
+    height:78px;
+  }
+  .hud {
+    position:absolute;
+    top:12px;
+    right:18px;
+    color:#fff;
+    text-shadow:0 2px 6px rgba(0,0,0,0.4);
+    z-index:30;
+    font-weight:700;
+    display:flex;
+    gap:12px;
+    align-items:center;
+    background: rgba(0,0,0,0.15);
+    padding:8px 12px;
+    border-radius:10px;
+    backdrop-filter: blur(6px);
+  }
+  .overlay {
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:50;
+    pointer-events:none;
+  }
+  .panel {
+    pointer-events:auto;
+    background: rgba(0,0,0,0.56);
+    color:white;
+    padding:20px 28px;
+    border-radius:12px;
+    text-align:center;
+  }
+  .big-text {
+    font-size:84px;
+    font-weight:900;
+    letter-spacing:6px;
+  }
+  .small {
+    font-size:18px;
+    margin-top:12px;
+  }
+  .btn {
+    display:inline-block;
+    margin-top:18px;
+    padding:10px 16px;
+    border-radius:8px;
+    background:#fff;
+    color:#111;
+    font-weight:700;
+    cursor:pointer;
+  }
+  @media (max-width:520px){
+    .big-text { font-size:48px; }
+    .qte { min-width:92px; height:44px; font-size:14px; }
+    .timer-ring { width:64px; height:64px; }
+  }
 </style>
 </head>
-
 <body>
+  <div class="game-wrap">
+    <canvas id="gameCanvas" width="1200" height="600"></canvas>
 
-<div id="water"></div>
-<div id="surfer"></div>
+    <!-- QTE button (positioned dynamically) -->
+    <div id="qteBtn" class="qte" role="button" aria-pressed="false" tabindex="0">CLICK!</div>
 
-<button id="qte">CLICK!</button>
+    <!-- SVG circular timer (positioned to match button) -->
+    <svg id="timerRing" class="timer-ring" viewBox="0 0 100 100" aria-hidden="true">
+      <circle cx="50" cy="50" r="44" stroke="rgba(255,255,255,0.25)" stroke-width="6" fill="none"></circle>
+      <circle id="timerArc" cx="50" cy="50" r="44" stroke="white" stroke-width="6" fill="none"
+              stroke-linecap="round" stroke-dasharray="276.46" stroke-dashoffset="0"></circle>
+    </svg>
 
-<div id="message"></div>
+    <!-- HUD: shows progress -->
+    <div class="hud" id="hud">
+      <div id="progress">QTE: 0 / 10</div>
+      <div id="timeLeft">4.0s</div>
+    </div>
+
+    <!-- Overlays for win/lose -->
+    <div id="overlay" class="overlay" style="display:none;">
+      <div class="panel" id="overlayPanel">
+        <div id="overlayTitle" class="big-text">SURF LEGEND</div>
+        <div id="overlaySub" class="small">You shredded them all! 🌊</div>
+        <div class="btn" id="restartBtn">Play Again</div>
+      </div>
+    </div>
+
+  </div>
 
 <script>
-let qtesCompleted = 0;
-let timer = null;
+(() => {
+  const QTE_MAX = 10;
+  const QTE_DURATION = 4000; // ms
+  const CANVAS = document.getElementById('gameCanvas');
+  const ctx = CANVAS.getContext('2d');
+  const qteBtn = document.getElementById('qteBtn');
+  const timerArc = document.getElementById('timerArc');
+  const hudProgress = document.getElementById('progress');
+  const hudTimeLeft = document.getElementById('timeLeft');
+  const overlay = document.getElementById('overlay');
+  const overlayTitle = document.getElementById('overlayTitle');
+  const overlaySub = document.getElementById('overlaySub');
+  const restartBtn = document.getElementById('restartBtn');
 
-// Start first QTE
-startQTE();
+  let qteCount = 0;
+  let qteActive = false;
+  let qteStart = 0;
+  let qteX = 0, qteY = 0;
+  let gameOver = false;
+  let win = false;
+  let scroll = 0;
+  let lastTime = performance.now();
 
-function startQTE() {
-    if (qtesCompleted >= 10) {
-        winGame();
-        return;
+  function resize() {
+    CANVAS.width = Math.max(600, window.innerWidth);
+    CANVAS.height = Math.max(360, window.innerHeight);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+  const rnd = (min,max) => min + Math.random()*(max-min);
+
+  function placeQTE() {
+    const margin = 80;
+    const w = CANVAS.clientWidth;
+    const h = CANVAS.clientHeight;
+    qteX = rnd(margin, w - margin);
+    qteY = rnd(120, h - 140);
+    qteBtn.style.left = qteX + 'px';
+    qteBtn.style.top = qteY + 'px';
+    document.getElementById('timerRing').style.left = qteX + 'px';
+    document.getElementById('timerRing').style.top = qteY + 'px';
+  }
+
+  function newQTE() {
+    qteActive = true;
+    qteStart = performance.now();
+    placeQTE();
+    updateHUD();
+    timerArc.style.transition = 'none';
+    timerArc.style.strokeDashoffset = '0';
+    requestAnimationFrame(() => {
+      timerArc.style.transition = `stroke-dashoffset ${QTE_DURATION}ms linear`;
+      timerArc.style.strokeDashoffset = '276.46';
+    });
+  }
+
+  function succeedQTE() {
+    if (!qteActive || gameOver || win) return;
+    qteCount++;
+    qteActive = false;
+    updateHUD();
+    if (qteCount >= QTE_MAX) {
+      win = true;
+      onWin();
+    } else {
+      setTimeout(newQTE, 450);
     }
+  }
 
-    const qte = document.getElementById("qte");
+  function onWipeout() {
+    gameOver = true;
+    qteActive = false;
+    showOverlay('WIPEOUT', 'You missed a QTE. Refresh to play again!', false);
+  }
 
-    // Random position
-    let x = Math.random() * (window.innerWidth - 160);
-    let y = Math.random() * (window.innerHeight - 200);
+  function onWin() {
+    showOverlay('SURF LEGEND', 'You completed all QTEs — shredder status unlocked!', true);
+  }
 
-    qte.style.left = x + "px";
-    qte.style.top = y + "px";
-    qte.style.display = "block";
+  function showOverlay(title, subtitle, isWin) {
+    overlayTitle.textContent = title;
+    overlaySub.textContent = subtitle;
+    overlay.style.display = 'flex';
+    overlay.style.pointerEvents = 'auto';
+    overlayTitle.style.color = isWin ? '#ffee55' : '#ff4d4d';
+    overlayTitle.style.textShadow = isWin ? '0 6px 20px rgba(0,0,0,0.6)' : '0 6px 12px rgba(0,0,0,0.6)';
+  }
 
-    // Timer for failure
-    timer = setTimeout(() => {
-        failGame();
-    }, 4000); // 4 seconds max
-}
+  function updateHUD() {
+    hudProgress.textContent = `QTE: ${qteCount} / ${QTE_MAX}`;
+  }
 
-document.getElementById("qte").onclick = () => {
-    clearTimeout(timer);
-    document.getElementById("qte").style.display = "none";
-    qtesCompleted++;
-    startQTE();
-};
+  qteBtn.addEventListener('click', (e) => { succeedQTE(); e.preventDefault(); });
+  qteBtn.addEventListener('touchstart', (e) => { succeedQTE(); e.preventDefault(); }, {passive:false});
+  qteBtn.addEventListener('keydown', (e) => { if (e.key==='Enter'||e.key===' ') succeedQTE(); });
 
-function failGame() {
-    endMessage("WIPEOUT");
-}
+  // RESTART: always reload page
+  restartBtn.addEventListener('click', () => location.reload());
+  window.addEventListener('keydown', (e) => { if ((gameOver||win) && (e.key==='r'||e.key==='R')) location.reload(); });
 
-function winGame() {
-    endMessage("SURF LEGEND");
-}
+  function drawFrame(now) {
+    const dt = now - lastTime;
+    lastTime = now;
+    scroll += dt * (0.02 + 0.005 * qteCount);
+    ctx.clearRect(0,0,CANVAS.width,CANVAS.height);
 
-function endMessage(text) {
-    const msg = document.getElementById("message");
-    msg.innerHTML = text + "<br><button id='restartBtn'>RESTART</button>";
-    msg.style.display = "block";
+    const w = CANVAS.width, h = CANVAS.height;
+    const sky = ctx.createLinearGradient(0,0,0,h*0.6);
+    sky.addColorStop(0, '#9ee6ff'); sky.addColorStop(1,'#69d0ff');
+    ctx.fillStyle = sky; ctx.fillRect(0,0,w,h);
 
-    document.getElementById("qte").style.display = "none";
+    drawWave(scroll*0.6, h*0.52, 0.018, 20, '#0077cc', 1.0);
+    drawWave(scroll*1.0, h*0.58, 0.02, 24, '#04659a', 0.95);
+    drawWave(scroll*1.6, h*0.66, 0.025, 28, '#024b6a', 0.9);
+    drawSurfer(w*0.18, h*0.56);
 
-    document.getElementById("restartBtn").onclick = () => {
-        location.reload();
-    };
-}
+    if (qteActive && !gameOver && !win) {
+      const elapsed = now - qteStart;
+      const left = Math.max(0, QTE_DURATION - elapsed);
+      hudTimeLeft.textContent = (left/1000).toFixed(1)+'s';
+      const pct = clamp(left/QTE_DURATION,0,1);
+      timerArc.style.strokeDashoffset = (1-pct)*2*Math.PI*44;
+      if (elapsed>=QTE_DURATION) onWipeout();
+    } else { hudTimeLeft.textContent='—'; timerArc.style.strokeDashoffset='0'; }
+
+    if (!gameOver && !win) requestAnimationFrame(drawFrame);
+  }
+
+  function drawWave(offset, baseY, freq, amp, color, alpha) {
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(0, baseY);
+    const step = 12;
+    for(let x=0;x<=CANVAS.width;x+=step){
+      const y = baseY+Math.sin((x+offset)*freq)*amp;
+      ctx.lineTo(x,y);
+    }
+    ctx.lineTo(CANVAS.width,CANVAS.height);
+    ctx.lineTo(0,CANVAS.height);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  function drawSurfer(x,y){
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.fillStyle='rgba(0,0,0,0.12)';
+    ctx.beginPath(); ctx.ellipse(0,34,60,16,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#f5c16c';
+    ctx.beginPath(); ctx.ellipse(0,18,70,12,0,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#111'; ctx.lineWidth=3; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(0,10); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,-6); ctx.lineTo(-18,6); ctx.moveTo(0,-6); ctx.lineTo(18,6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,10); ctx.lineTo(-10,28); ctx.moveTo(0,10); ctx.lineTo(10,28); ctx.stroke();
+    ctx.fillStyle='#ffd7b5'; ctx.beginPath(); ctx.arc(0,-22,10,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  (function initTimer(){ const r=44; const circumference=2*Math.PI*r; timerArc.setAttribute('stroke-dasharray',circumference.toFixed(2)); timerArc.setAttribute('stroke-dashoffset','0'); })();
+  setTimeout(()=>{ newQTE(); lastTime=performance.now(); requestAnimationFrame(drawFrame); },500);
+
+})();
 </script>
-
 </body>
 </html>
